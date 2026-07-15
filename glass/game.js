@@ -175,15 +175,25 @@ function onCellClick(e) {
   }
 }
 
-startBtn.addEventListener('click', () => {
-  if (playerCups.size !== 3) return;
+function attemptStart() {
+  if (playerCups.size !== 3) {
+    setupHintEl.classList.add('warn');
+    setupHintEl.textContent = `place all 3 cups on your grid first! (${playerCups.size}/3)`;
+    setTimeout(() => {
+      setupHintEl.classList.remove('warn');
+      updateHud();
+    }, 1400);
+    return;
+  }
   placeCpuCups();
   overlay.classList.add('hidden');
   phase = 'player-turn';
   restartBtn.classList.remove('hidden');
   updateHud();
   renderAll();
-});
+}
+
+startBtn.addEventListener('click', attemptStart);
 
 restartBtn.addEventListener('click', restartGame);
 
@@ -280,15 +290,7 @@ function restartGame() {
   `;
   overlay.classList.remove('hidden');
   restartBtn.classList.add('hidden');
-  document.getElementById('startBtn').addEventListener('click', () => {
-    if (playerCups.size !== 3) return;
-    placeCpuCups();
-    overlay.classList.add('hidden');
-    phase = 'player-turn';
-    restartBtn.classList.remove('hidden');
-    updateHud();
-    renderAll();
-  });
+  document.getElementById('startBtn').addEventListener('click', attemptStart);
 }
 
 resetGame();

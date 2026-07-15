@@ -147,6 +147,18 @@ html, body {
   text-shadow: 0 0 6px #ffe93b;
 }
 
+.setup-hint.warn {
+  color: #ff5c5c;
+  text-shadow: 0 0 8px #ff2d2d;
+  animation: warnShake 0.4s ease;
+}
+
+@keyframes warnShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
 .screen {
   position: fixed;
   inset: 0;
@@ -203,15 +215,25 @@ html, body {
   top: 12px;
   left: 14px;
   z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-family: 'Press Start 2P', monospace;
   font-size: 9px;
-  color: #6fd8ff;
+  color: #14081e;
+  background: #ffffff;
+  border: 2px solid #ffffff;
+  border-radius: 6px;
+  padding: 8px 12px;
   text-decoration: none;
-  text-shadow: 0 0 6px rgba(111, 216, 255, 0.6);
-  opacity: 0.75;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.back-link:hover { opacity: 1; }
+.back-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.75);
+}
 
 .restart-link {
   position: fixed;
