@@ -5,6 +5,7 @@ const GAMES = [
   { name: 'Pac-Man', icon: 'pacman', url: 'pacman/index.html' },
   { name: 'Neon Brawler', icon: 'emoji', glyph: '🥊', url: 'fighter/index.html' },
   { name: 'DK', icon: 'emoji', glyph: '🦍', url: 'dk/index.html' },
+  { name: 'Broken Glass', icon: 'emoji', glyph: '🥃', url: 'glass/index.html' },
 ];
 
 const appGrid = document.getElementById('appGrid');

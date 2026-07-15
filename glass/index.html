@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BROKEN GLASS - Retro Grid Battle</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%A5%83</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-wrap">
+    <div id="hud">
+      <div class="score-box">YOU<span id="playerScore">0</span></div>
+      <div class="turn-indicator" id="turnIndicator">PLACE YOUR CUPS</div>
+      <div class="score-box">CPU<span id="cpuScore">0</span></div>
+    </div>
+
+    <div id="boards">
+      <div class="board-wrap">
+        <h2>YOUR GRID</h2>
+        <div class="board" id="playerBoard"></div>
+        <p class="setup-hint" id="setupHint">place 3 glass cups &mdash; <span id="cupCount">0</span>/3</p>
+      </div>
+      <div class="board-wrap">
+        <h2>ENEMY GRID</h2>
+        <div class="board" id="enemyBoard"></div>
+      </div>
+    </div>
+
+    <div id="overlay" class="screen">
+      <h1 class="title">BROKEN GLASS</h1>
+      <p class="sub">place 3 glass cups on your grid, then take turns guessing where the computer hid its cups. find all 3 first to win &mdash; but the computer is hunting yours too.</p>
+      <button id="startBtn" class="arcade-btn">PRESS START</button>
+    </div>
+  </div>
+
+  <a href="../index.html" class="back-link">◀ HOME</a>
+  <button id="restartBtn" class="restart-link hidden" aria-label="restart run">⟲ RESTART</button>
+
+  <script src="game.js"></script>
+</body>
+</html>
