@@ -167,11 +167,17 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 20px;
-  background: rgba(4, 10, 18, 0.92);
+  background: rgba(4, 10, 18, 0.4);
   text-align: center;
   z-index: 10;
   padding: 20px;
   overflow-y: auto;
+  pointer-events: none;
+}
+
+.screen button,
+.screen input {
+  pointer-events: auto;
 }
 
 .hidden { display: none !important; }
