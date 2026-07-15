@@ -22,6 +22,10 @@ function renderGames(list) {
       const glyph = document.createElement('span');
       glyph.className = 'icon-pacman';
       icon.appendChild(glyph);
+      const badge = document.createElement('span');
+      badge.className = 'icon-badge';
+      badge.textContent = '👻';
+      icon.appendChild(badge);
     } else {
       const glyph = document.createElement('span');
       glyph.className = 'rocket';
