@@ -245,6 +245,18 @@ html, body {
 
 .no-results.hidden { display: none; }
 
+.icon-pacman {
+  display: inline-block;
+  width: 46px;
+  height: 46px;
+  background: #ffe93b;
+  filter: drop-shadow(0 0 8px #ffcc00) drop-shadow(0 0 3px #ff9500);
+  clip-path: polygon(
+    50% 50%, 93.3% 75%, 75% 93.3%, 50% 100%, 25% 93.3%, 6.7% 75%,
+    0% 50%, 6.7% 25%, 25% 6.7%, 50% 0%, 75% 6.7%, 93.3% 25%, 50% 50%
+  );
+}
+
 @media (max-width: 480px) {
   .brand { letter-spacing: 2px; }
   .app-icon { width: 78px; height: 78px; font-size: 34px; }

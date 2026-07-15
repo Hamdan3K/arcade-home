@@ -25,6 +25,7 @@ const nameInput = document.getElementById('nameInput');
 const submitNameBtn = document.getElementById('submitNameBtn');
 const leaderboardEl = document.getElementById('leaderboard');
 const leaderboardListEl = document.getElementById('leaderboardList');
+const restartBtn = document.getElementById('restartBtn');
 
 // ---------- pixel sprite data (0 = empty, 1/2 = palette index) ----------
 const SHIP_SPRITE = [
@@ -330,6 +331,7 @@ window.addEventListener('keydown', (e) => {
     if (running) firing = true;
     else if (!awaitingName) startGame();
   }
+  if ((e.key === 'r' || e.key === 'R') && running) restartGame();
 });
 window.addEventListener('keyup', (e) => {
   if (['ArrowLeft', 'a', 'A'].includes(e.key)) movingLeft = false;
@@ -353,6 +355,7 @@ bindHold(downBtn, () => movingBackward = true, () => movingBackward = false);
 bindHold(fireBtn, () => firing = true, () => firing = false);
 
 startBtn.addEventListener('click', startGame);
+restartBtn.addEventListener('click', restartGame);
 
 submitNameBtn.addEventListener('click', submitName);
 nameInput.addEventListener('keydown', (e) => {
@@ -377,6 +380,13 @@ function startGame() {
   overlay.classList.add('hidden');
   resetGameState();
   running = true;
+  restartBtn.classList.remove('hidden');
+}
+
+function restartGame() {
+  saveCheckpoint(wave);
+  resetGameState();
+  running = true;
 }
 
 function showStartScreen() {
@@ -391,6 +401,7 @@ function showStartScreen() {
   startBtn.classList.remove('hidden');
   renderLeaderboard();
   overlay.classList.remove('hidden');
+  restartBtn.classList.add('hidden');
 }
 
 // ---------- update ----------
@@ -571,6 +582,7 @@ function endGame() {
   gameOver = true;
   saveCheckpoint(wave);
   updateHud();
+  restartBtn.classList.add('hidden');
 
   if (qualifiesForLeaderboard(score)) {
     awaitingName = true;
