@@ -1,8 +1,9 @@
 // Arcade home page - renders app tiles from GAMES and filters them via the search bar.
 
 const GAMES = [
-  { name: 'Neon Raiders', icon: 'rocket', url: 'game/index.html' },
+  { name: 'Neon Raiders', icon: 'emoji', glyph: '🚀', url: 'game/index.html' },
   { name: 'Pac-Man', icon: 'pacman', url: 'pacman/index.html' },
+  { name: 'Neon Brawler', icon: 'emoji', glyph: '🥊', url: 'fighter/index.html' },
 ];
 
 const appGrid = document.getElementById('appGrid');
@@ -28,8 +29,8 @@ function renderGames(list) {
       icon.appendChild(badge);
     } else {
       const glyph = document.createElement('span');
-      glyph.className = 'rocket';
-      glyph.textContent = '🚀';
+      glyph.className = g.glyph === '🚀' ? 'emoji-glyph rocket-tilt' : 'emoji-glyph';
+      glyph.textContent = g.glyph;
       icon.appendChild(glyph);
     }
 

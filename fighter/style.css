@@ -1,0 +1,347 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0c0608;
+  color: #ffe0c2;
+  font-family: 'Press Start 2P', monospace;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+#game-wrap {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+canvas#game {
+  background: #0c0608;
+  max-width: 96vw;
+  max-height: 70vh;
+  width: auto;
+  height: auto;
+  image-rendering: pixelated;
+  border: 2px solid #3a1f12;
+  box-shadow: 0 0 40px rgba(255, 140, 40, 0.15) inset;
+}
+
+#hud {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 6px;
+}
+
+.fighter-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fighter-info.right { align-items: flex-end; }
+
+.fighter-name {
+  font-size: 11px;
+  color: #ffd23f;
+  text-shadow: 0 0 6px #ff9500;
+  letter-spacing: 1px;
+}
+
+.health-bar-wrap {
+  width: 100%;
+  height: 16px;
+  background: #2a0a0a;
+  border: 2px solid #ffd23f;
+  box-shadow: 0 0 8px rgba(255, 210, 63, 0.4);
+  display: flex;
+}
+
+.fighter-info.right .health-bar-wrap { justify-content: flex-end; }
+
+.health-bar {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(180deg, #fff29a 0%, #ffd23f 40%, #ff9500 100%);
+  transition: width 0.25s ease-out;
+}
+
+.round-pips {
+  font-size: 14px;
+  color: #ff5d3a;
+  text-shadow: 0 0 6px #ff5d3a;
+  letter-spacing: 4px;
+}
+
+.timer-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 2px;
+}
+
+.ko-label {
+  font-size: 9px;
+  color: #ff5d3a;
+}
+
+.timer {
+  font-size: 22px;
+  color: #fff;
+  text-shadow: 0 0 10px #ff5d3a;
+}
+
+.score-line {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-size: 10px;
+  color: #ff9edb;
+}
+
+.score-line b { color: #fff; }
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: rgba(12, 6, 8, 0.9);
+  text-align: center;
+  z-index: 10;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.hidden { display: none !important; }
+
+.title {
+  font-size: clamp(20px, 5.5vw, 38px);
+  color: #ffd23f;
+  text-shadow: 0 0 10px #ff9500, 0 0 26px #ff5d3a, 2px 2px 0 #3a1000;
+  letter-spacing: 4px;
+  margin: 0;
+}
+
+.sub {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #ffb37a;
+  max-width: 480px;
+}
+
+.hint {
+  font-size: 9px;
+  color: #886;
+}
+
+.arcade-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  padding: 16px 28px;
+  background: #1a0a06;
+  color: #ffd23f;
+  border: 3px solid #ffd23f;
+  box-shadow: 0 0 16px rgba(255, 210, 63, 0.5);
+  cursor: pointer;
+  animation: pulse 1.4s infinite ease-in-out;
+}
+
+.arcade-btn:hover { background: #2a1a0a; }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 210, 63, 0.4); }
+  50% { box-shadow: 0 0 26px rgba(255, 210, 63, 0.9); }
+}
+
+/* leaderboard */
+.leaderboard {
+  background: rgba(255, 140, 40, 0.05);
+  border: 2px solid #5a2a12;
+  padding: 14px 22px;
+  min-width: 260px;
+}
+
+.board-title {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: #ffd23f;
+  text-shadow: 0 0 6px #ffd23f;
+  letter-spacing: 2px;
+}
+
+#leaderboardList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+#leaderboardList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: #ffe0c2;
+}
+
+#leaderboardList li:first-child { color: #ffd23f; }
+#leaderboardList li:nth-child(2) { color: #ff9edb; }
+#leaderboardList li:nth-child(3) { color: #ff9500; }
+
+#leaderboardList .empty {
+  color: #886;
+  justify-content: center;
+}
+
+/* name entry */
+.name-entry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+#nameInput {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-align: center;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  width: 220px;
+  background: #1a0a06;
+  border: 3px solid #ff9500;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 149, 0, 0.5);
+}
+
+#nameInput:focus {
+  outline: none;
+  border-color: #ffd23f;
+  box-shadow: 0 0 16px rgba(255, 210, 63, 0.6);
+}
+
+#touch-controls {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: none;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 20px;
+  z-index: 6;
+}
+
+.touch-btn {
+  border-radius: 50%;
+  background: rgba(255, 149, 0, 0.12);
+  border: 2px solid #ff9500;
+  color: #ff9500;
+  font-size: 20px;
+  box-shadow: 0 0 14px rgba(255, 149, 0, 0.5);
+}
+
+#dpad {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.dpad-btn {
+  position: absolute;
+  width: 54px;
+  height: 54px;
+}
+
+.dpad-up { top: 0; left: 48px; }
+.dpad-left { top: 48px; left: 0; }
+.dpad-right { top: 48px; left: 96px; }
+.dpad-down { top: 96px; left: 48px; }
+
+#attackButtons {
+  display: flex;
+  gap: 14px;
+}
+
+.attack-btn {
+  width: 68px;
+  height: 68px;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.punch-btn { color: #ffd23f; border-color: #ffd23f; background: rgba(255, 210, 63, 0.12); }
+.kick-btn { color: #ff5d3a; border-color: #ff5d3a; background: rgba(255, 93, 58, 0.12); }
+
+.back-link {
+  position: fixed;
+  top: 12px;
+  left: 14px;
+  z-index: 20;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: #ff9edb;
+  text-decoration: none;
+  text-shadow: 0 0 6px rgba(255, 158, 219, 0.6);
+  opacity: 0.75;
+}
+
+.back-link:hover { opacity: 1; }
+
+.restart-link {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 20;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: #ff9edb;
+  background: transparent;
+  border: none;
+  text-shadow: 0 0 6px rgba(255, 158, 219, 0.6);
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.restart-link:hover { opacity: 1; }
+
+@media (max-width: 900px), (pointer: coarse) {
+  #touch-controls { display: flex; }
+}
+
+@media (max-width: 600px) {
+  .sub { font-size: 9px; }
+  .fighter-name { font-size: 9px; }
+  .timer { font-size: 18px; }
+  #dpad { width: 120px; height: 120px; }
+  .dpad-btn { width: 44px; height: 44px; font-size: 16px; }
+  .dpad-up { left: 38px; }
+  .dpad-left { top: 38px; left: 0; }
+  .dpad-right { top: 38px; left: 76px; }
+  .dpad-down { top: 76px; left: 38px; }
+  .attack-btn { width: 56px; height: 56px; font-size: 18px; }
+}

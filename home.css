@@ -219,10 +219,14 @@ html, body {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
 }
 
-.app-icon .rocket {
+.emoji-glyph {
+  display: inline-block;
+  filter: drop-shadow(0 0 6px rgba(120, 170, 255, 0.5));
+}
+
+.emoji-glyph.rocket-tilt {
   filter: drop-shadow(0 0 8px #7fd4ff) drop-shadow(0 0 3px #ff5da2);
   transform: rotate(-45deg);
-  display: inline-block;
 }
 
 .app-tile:hover .app-icon,

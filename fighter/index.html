@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON BRAWLER - Retro Fighting Arcade</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%F0%9F%A5%8A</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-wrap">
+    <div id="hud">
+      <div class="fighter-info left">
+        <div class="fighter-name">BLAZE</div>
+        <div class="health-bar-wrap"><div class="health-bar" id="p1Health"></div></div>
+        <div class="round-pips" id="p1Pips">○○</div>
+      </div>
+      <div class="timer-wrap">
+        <div class="ko-label">VS</div>
+        <div class="timer" id="timer">99</div>
+      </div>
+      <div class="fighter-info right">
+        <div class="fighter-name">TANK</div>
+        <div class="health-bar-wrap"><div class="health-bar" id="p2Health"></div></div>
+        <div class="round-pips" id="p2Pips">○○</div>
+      </div>
+    </div>
+    <div class="score-line">
+      <span>SCORE <b id="score">0</b></span>
+      <span>HIGH <b id="highScore">0</b></span>
+    </div>
+
+    <canvas id="game" width="720" height="380"></canvas>
+
+    <div id="overlay" class="screen">
+      <h1 class="title" id="overlayTitle">NEON BRAWLER</h1>
+      <p class="sub" id="overlaySub">move <b>◀ ▶</b> / <b>A D</b> &mdash; <b>W</b> jump &mdash; <b>J</b> punch &mdash; <b>K</b> kick &mdash; hold <b>S</b> to block</p>
+
+      <div id="nameEntry" class="name-entry hidden">
+        <p class="board-title">NEW TOP SCORE! ENTER YOUR NAME</p>
+        <input id="nameInput" maxlength="10" autocomplete="off" spellcheck="false" placeholder="YOUR NAME">
+        <button id="submitNameBtn" class="arcade-btn">SUBMIT</button>
+      </div>
+
+      <div id="leaderboard" class="leaderboard">
+        <p class="board-title">TOP SCORES</p>
+        <ol id="leaderboardList"></ol>
+      </div>
+
+      <button id="startBtn" class="arcade-btn">PRESS START</button>
+      <p class="hint">(touch controls appear on mobile)</p>
+    </div>
+
+    <div id="touch-controls">
+      <div id="dpad">
+        <button id="leftBtn" class="touch-btn dpad-btn dpad-left" aria-label="move left">◀</button>
+        <button id="rightBtn" class="touch-btn dpad-btn dpad-right" aria-label="move right">▶</button>
+        <button id="jumpBtn" class="touch-btn dpad-btn dpad-up" aria-label="jump">▲</button>
+        <button id="blockBtn" class="touch-btn dpad-btn dpad-down" aria-label="block">▼</button>
+      </div>
+      <div id="attackButtons">
+        <button id="punchBtn" class="touch-btn attack-btn punch-btn" aria-label="punch">P</button>
+        <button id="kickBtn" class="touch-btn attack-btn kick-btn" aria-label="kick">K</button>
+      </div>
+    </div>
+  </div>
+
+  <a href="../index.html" class="back-link">◀ HOME</a>
+  <button id="restartBtn" class="restart-link hidden" aria-label="restart run">⟲ RESTART (R)</button>
+
+  <script src="game.js"></script>
+</body>
+</html>
