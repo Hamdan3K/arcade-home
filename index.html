@@ -3,51 +3,41 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NEON RAIDERS - Retro Space Shooter</title>
-<link rel="stylesheet" href="style.css">
+<title>ARCADE HOME</title>
+<link rel="stylesheet" href="home.css">
 </head>
 <body>
-  <div id="game-wrap">
-    <div id="hud">
-      <div class="hud-item">SCORE<span id="score">0</span></div>
-      <div class="hud-item">HIGH<span id="highScore">0</span></div>
-      <div class="hud-item">WAVE<span id="wave">1</span></div>
-      <div class="hud-item">PWR<span id="power">●○○</span></div>
-      <div class="hud-item">LIVES<span id="lives">▲▲▲</span></div>
+  <div class="scene" aria-hidden="true">
+    <div class="sky"></div>
+    <div class="sun">
+      <div class="bar bar1"></div>
+      <div class="bar bar2"></div>
+      <div class="bar bar3"></div>
+      <div class="bar bar4"></div>
+      <div class="bar bar5"></div>
+      <div class="bar bar6"></div>
     </div>
-
-    <canvas id="game" width="800" height="600"></canvas>
-
-    <div id="overlay" class="screen">
-      <h1 class="title" id="overlayTitle">NEON RAIDERS</h1>
-      <p class="sub" id="overlaySub">move <b>◀ ▶ ▲ ▼</b> / <b>WASD</b> to fly &mdash; <b>SPACE</b> to fire &mdash; grab the <b>violet orb</b> from the elite alien to power up</p>
-
-      <div id="nameEntry" class="name-entry hidden">
-        <p class="board-title">NEW TOP SCORE! ENTER YOUR NAME</p>
-        <input id="nameInput" maxlength="10" autocomplete="off" spellcheck="false" placeholder="YOUR NAME">
-        <button id="submitNameBtn" class="arcade-btn">SUBMIT</button>
-      </div>
-
-      <div id="leaderboard" class="leaderboard">
-        <p class="board-title">TOP SCORES</p>
-        <ol id="leaderboardList"></ol>
-      </div>
-
-      <button id="startBtn" class="arcade-btn">PRESS START</button>
-      <p class="hint">(touch controls appear on mobile)</p>
-    </div>
-
-    <div id="touch-controls">
-      <div id="dpad">
-        <button id="upBtn" class="touch-btn dpad-btn dpad-up" aria-label="move forward">▲</button>
-        <button id="leftBtn" class="touch-btn dpad-btn dpad-left" aria-label="move left">◀</button>
-        <button id="rightBtn" class="touch-btn dpad-btn dpad-right" aria-label="move right">▶</button>
-        <button id="downBtn" class="touch-btn dpad-btn dpad-down" aria-label="move backward">▼</button>
-      </div>
-      <button id="fireBtn" class="touch-btn fire-btn" aria-label="fire">⦿</button>
-    </div>
+    <div class="horizon-glow"></div>
+    <div class="mountains left"></div>
+    <div class="mountains right"></div>
+    <div class="ground"></div>
   </div>
 
-  <script src="game.js"></script>
+  <main class="page">
+    <div>
+      <h1 class="brand">ARCADE HOME</h1>
+      <p class="brand-sub">my games</p>
+    </div>
+
+    <div class="search-wrap">
+      <span class="icon">🔍</span>
+      <input id="gameSearch" type="search" placeholder="Search games..." autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="app-grid" id="appGrid"></div>
+    <p class="no-results hidden" id="noResults">NO GAMES FOUND</p>
+  </main>
+
+  <script src="home.js"></script>
 </body>
 </html>

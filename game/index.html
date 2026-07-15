@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON RAIDERS - Retro Space Shooter</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-wrap">
+    <div id="hud">
+      <div class="hud-item">SCORE<span id="score">0</span></div>
+      <div class="hud-item">HIGH<span id="highScore">0</span></div>
+      <div class="hud-item">WAVE<span id="wave">1</span></div>
+      <div class="hud-item">PWR<span id="power">●○○</span></div>
+      <div class="hud-item">LIVES<span id="lives">▲▲▲</span></div>
+    </div>
+
+    <canvas id="game" width="800" height="600"></canvas>
+
+    <div id="overlay" class="screen">
+      <h1 class="title" id="overlayTitle">NEON RAIDERS</h1>
+      <p class="sub" id="overlaySub">move <b>◀ ▶ ▲ ▼</b> / <b>WASD</b> to fly &mdash; <b>SPACE</b> to fire &mdash; grab the <b>violet orb</b> from the elite alien to power up</p>
+
+      <div id="nameEntry" class="name-entry hidden">
+        <p class="board-title">NEW TOP SCORE! ENTER YOUR NAME</p>
+        <input id="nameInput" maxlength="10" autocomplete="off" spellcheck="false" placeholder="YOUR NAME">
+        <button id="submitNameBtn" class="arcade-btn">SUBMIT</button>
+      </div>
+
+      <div id="leaderboard" class="leaderboard">
+        <p class="board-title">TOP SCORES</p>
+        <ol id="leaderboardList"></ol>
+      </div>
+
+      <button id="startBtn" class="arcade-btn">PRESS START</button>
+      <p class="hint">(touch controls appear on mobile)</p>
+    </div>
+
+    <div id="touch-controls">
+      <div id="dpad">
+        <button id="upBtn" class="touch-btn dpad-btn dpad-up" aria-label="move forward">▲</button>
+        <button id="leftBtn" class="touch-btn dpad-btn dpad-left" aria-label="move left">◀</button>
+        <button id="rightBtn" class="touch-btn dpad-btn dpad-right" aria-label="move right">▶</button>
+        <button id="downBtn" class="touch-btn dpad-btn dpad-down" aria-label="move backward">▼</button>
+      </div>
+      <button id="fireBtn" class="touch-btn fire-btn" aria-label="fire">⦿</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
