@@ -4,6 +4,7 @@ const GAMES = [
   { name: 'Neon Raiders', icon: 'emoji', glyph: '🚀', url: 'game/index.html' },
   { name: 'Pac-Man', icon: 'pacman', url: 'pacman/index.html' },
   { name: 'Neon Brawler', icon: 'emoji', glyph: '🥊', url: 'fighter/index.html' },
+  { name: 'DK', icon: 'emoji', glyph: '🦍', url: 'dk/index.html' },
 ];
 
 const appGrid = document.getElementById('appGrid');
