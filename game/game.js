@@ -37,13 +37,25 @@ const SHIP_SPRITE = [
   '22.....22',
   '2.......2',
 ];
-// palette/glow tier per power level (1-3) - the ship visibly upgrades as you collect orbs
+// palette/glow tier per power level (1-6) - the ship visibly upgrades as you collect orbs
 const SHIP_PALETTES = [
   { '1': '#ff5577', '2': '#ff2255' },
   { '1': '#ffcf5c', '2': '#ff8a00' },
   { '1': '#8affef', '2': '#39e0ff' },
+  { '1': '#7dffb0', '2': '#22c766' },
+  { '1': '#c895ff', '2': '#8a2be2' },
+  { '1': '#ffffff', '2': '#e0e0ff' },
 ];
-const SHIP_GLOWS = ['#ff3366', '#ffb400', '#39e0ff'];
+const SHIP_GLOWS = ['#ff3366', '#ffb400', '#39e0ff', '#22ff88', '#b967ff', '#ffffff'];
+const MAX_POWER = SHIP_PALETTES.length;
+const SHOT_OFFSETS = [
+  [0],
+  [-8, 8],
+  [-14, 0, 14],
+  [-21, -7, 7, 21],
+  [-28, -14, 0, 14, 28],
+  [-35, -21, -7, 7, 21, 35],
+];
 
 const UFO_SPRITE = [
   '..1...1..',
@@ -314,7 +326,7 @@ function updateHud() {
   scoreEl.textContent = score;
   highScoreEl.textContent = Math.max(currentHighScore(), score);
   waveEl.textContent = wave;
-  powerEl.textContent = '●'.repeat(player.power) + '○'.repeat(3 - player.power);
+  powerEl.textContent = '●'.repeat(player.power) + '○'.repeat(MAX_POWER - player.power);
   livesEl.textContent = '▲'.repeat(Math.max(0, lives));
 }
 
@@ -391,7 +403,7 @@ function restartGame() {
 
 function showStartScreen() {
   overlayTitle.textContent = 'NEON RAIDERS';
-  overlaySub.innerHTML = 'move <b>◀ ▶ ▲ ▼</b> / <b>WASD</b> to fly &mdash; <b>SPACE</b> to fire &mdash; grab the <b>violet orb</b> from the elite alien to power up';
+  overlaySub.innerHTML = 'move <b>◀ ▶ ▲ ▼</b> / <b>WASD</b> to fly &mdash; <b>SPACE</b> to fire &mdash; grab the <b>violet orb</b> from the elite alien to power up and restore a life (6 upgrade tiers)';
   overlaySub.innerHTML += checkpointWave > 1
     ? `<br><span class="resume-note">resuming at WAVE ${checkpointWave}</span>`
     : '';
@@ -443,11 +455,11 @@ function update(dt) {
   // fire on space bar / touch fire button - spread widens as power increases
   player.cooldown -= dt;
   if (firing && player.cooldown <= 0) {
-    const offsets = player.power === 1 ? [0] : player.power === 2 ? [-8, 8] : [-14, 0, 14];
+    const offsets = SHOT_OFFSETS[player.power - 1];
     for (const off of offsets) {
       bullets.push({ x: player.x + off, y: player.y - player.height / 2, vy: -560 });
     }
-    player.cooldown = player.fireRate * (1 - 0.12 * (player.power - 1));
+    player.cooldown = player.fireRate * Math.max(0.5, 1 - 0.12 * (player.power - 1));
     sfx.shoot();
   }
 
@@ -529,11 +541,12 @@ function update(dt) {
   }
   enemyBullets = enemyBullets.filter(b => !b.hit);
 
-  // collisions: player vs power-up orbs
+  // collisions: player vs power-up orbs - each one upgrades the ship AND restores a life
   for (const p of pickups) {
     if (Math.abs(p.x - player.x) < player.width / 2 + 8 && Math.abs(p.y - player.y) < player.height / 2 + 8) {
       p.collected = true;
-      if (player.power < 3) player.power += 1;
+      if (player.power < MAX_POWER) player.power += 1;
+      lives += 1;
       sfx.powerup();
       spawnExplosion(p.x, p.y, '#c86bff');
       updateHud();
@@ -708,7 +721,7 @@ function drawThruster(x, y, power) {
   const flicker = 0.6 + 0.4 * Math.sin(performance.now() / 40);
   const len = 8 + power * 6;
   ctx.save();
-  ctx.fillStyle = power >= 3 ? '#8affef' : power === 2 ? '#ffcf5c' : '#ff8a5c';
+  ctx.fillStyle = SHIP_GLOWS[power - 1];
   ctx.shadowColor = ctx.fillStyle;
   ctx.shadowBlur = 10 * flicker;
   ctx.fillRect(x - 6, y, 5, len * flicker);
