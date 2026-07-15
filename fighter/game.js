@@ -25,6 +25,8 @@ const nameInput = document.getElementById('nameInput');
 const submitNameBtn = document.getElementById('submitNameBtn');
 const leaderboardEl = document.getElementById('leaderboard');
 const leaderboardListEl = document.getElementById('leaderboardList');
+const speedLeaderboardEl = document.getElementById('speedLeaderboard');
+const speedLeaderboardListEl = document.getElementById('speedLeaderboardList');
 const restartBtn = document.getElementById('restartBtn');
 const leftBtn = document.getElementById('leftBtn');
 const rightBtn = document.getElementById('rightBtn');
@@ -105,6 +107,50 @@ function renderLeaderboard() {
   });
 }
 
+// ---------- speed leaderboard (fastest time to clear a level) ----------
+const SPEED_LEADERBOARD_KEY = 'neonBrawlerSpeedLeaderboard';
+let speedLeaderboard = [];
+function loadSpeedLeaderboard() {
+  try {
+    const raw = localStorage.getItem(SPEED_LEADERBOARD_KEY);
+    speedLeaderboard = raw ? JSON.parse(raw) : [];
+  } catch (e) { speedLeaderboard = []; }
+}
+function saveSpeedLeaderboard() {
+  try { localStorage.setItem(SPEED_LEADERBOARD_KEY, JSON.stringify(speedLeaderboard)); } catch (e) { /* unavailable */ }
+}
+function qualifiesForSpeedLeaderboard(t) {
+  if (!isFinite(t)) return false;
+  if (speedLeaderboard.length < 3) return true;
+  return t < speedLeaderboard[2].time;
+}
+function addToSpeedLeaderboard(name, t) {
+  speedLeaderboard.push({ name: name.slice(0, 10).toUpperCase() || 'PLAYER', time: t });
+  speedLeaderboard.sort((a, b) => a.time - b.time);
+  speedLeaderboard = speedLeaderboard.slice(0, 3);
+  saveSpeedLeaderboard();
+}
+function renderSpeedLeaderboard() {
+  speedLeaderboardListEl.innerHTML = '';
+  if (!speedLeaderboard.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'NO TIMES YET';
+    speedLeaderboardListEl.appendChild(li);
+    return;
+  }
+  speedLeaderboard.forEach((entry, i) => {
+    const li = document.createElement('li');
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = `${i + 1}. ${entry.name}`;
+    const timeSpan = document.createElement('span');
+    timeSpan.textContent = `${entry.time.toFixed(1)}s`;
+    li.appendChild(nameSpan);
+    li.appendChild(timeSpan);
+    speedLeaderboardListEl.appendChild(li);
+  });
+}
+
 // ---------- fighters ----------
 function makeFighter(isPlayer, x, colors) {
   return {
@@ -119,12 +165,17 @@ const TANK_COLORS = { gi: '#c23b2a', trim: '#5a1a10', skin: '#d99a66', glove: '#
 
 let player, cpu;
 let score = 0;
+let level = 1;
+let elapsed = 0;
+let bestLevelTime = Infinity;
+let scoreQualifiesFlag = false;
+let speedQualifiesFlag = false;
 let running = false;
 let gameOver = false;
 let awaitingName = false;
 let roundTime = 60;
 let roundTimerAcc = 0;
-let phase = 'fight'; // 'intro' | 'fight' | 'ko' | 'roundend'
+let phase = 'fight'; // 'intro' | 'fight' | 'ko' | 'roundend' | 'levelup'
 let phaseTimer = 0;
 let matchOver = false;
 let particles = [];
@@ -135,23 +186,40 @@ const ATTACKS = {
   kick: { startup: 0.14, active: 0.10, recovery: 0.24, reach: 88, damage: 10, knockback: 55 },
 };
 
+function difficultyLevel() { return Math.min(level, 10); }
+
 function resetFighters() {
   player = makeFighter(true, 200, BLAZE_COLORS);
   cpu = makeFighter(false, W - 200, TANK_COLORS);
 }
 
+// between rounds within the same level, health/position resets but roundsWon must persist
+function resetRoundState() {
+  player.x = 200; player.feetY = 0; player.vy = 0;
+  player.hp = 100; player.state = 'idle'; player.stateTime = 0; player.hasHit = false; player.blocking = false;
+  cpu.x = W - 200; cpu.feetY = 0; cpu.vy = 0;
+  cpu.hp = 100; cpu.state = 'idle'; cpu.stateTime = 0; cpu.hasHit = false; cpu.blocking = false;
+}
+
 function resetMatch() {
   score = 0;
+  level = 1;
+  bestLevelTime = Infinity;
   gameOver = false;
   awaitingName = false;
   matchOver = false;
-  resetFighters();
+  startLevel();
+}
+
+function startLevel() {
+  resetFighters(); // fresh roundsWon = 0 for the new level's opponent
+  elapsed = 0;
   startRoundIntro(1);
   updateHud();
 }
 
 function startRoundIntro(roundNum) {
-  resetFighters();
+  resetRoundState();
   roundTime = 60;
   roundTimerAcc = 0;
   phase = 'intro';
@@ -161,6 +229,7 @@ function startRoundIntro(roundNum) {
 
 function updateHud() {
   scoreEl.textContent = score;
+  levelEl.textContent = level;
   highScoreEl.textContent = Math.max(currentHighScore(), score);
   timerEl.textContent = Math.ceil(roundTime);
   p1HealthEl.style.width = Math.max(0, player.hp) + '%';
@@ -209,15 +278,18 @@ nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitName
 
 function submitName() {
   const name = nameInput.value.trim() || 'PLAYER';
-  addToLeaderboard(name, score);
+  if (scoreQualifiesFlag) addToLeaderboard(name, score);
+  if (speedQualifiesFlag) addToSpeedLeaderboard(name, bestLevelTime);
   awaitingName = false;
   nameEntry.classList.add('hidden');
   leaderboardEl.classList.remove('hidden');
+  speedLeaderboardEl.classList.remove('hidden');
   startBtn.classList.remove('hidden');
   renderLeaderboard();
+  renderSpeedLeaderboard();
   updateHud();
-  overlayTitle.textContent = matchOver === 'win' ? 'YOU WIN!' : 'GAME OVER';
-  overlaySub.innerHTML = `SCORE <b>${score}</b>`;
+  overlayTitle.textContent = 'GAME OVER';
+  overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; REACHED LEVEL <b>${level}</b>`;
   startBtn.textContent = 'PLAY AGAIN';
 }
 
@@ -235,12 +307,14 @@ function restartGame() {
 
 function showStartScreen() {
   overlayTitle.textContent = 'NEON BRAWLER';
-  overlaySub.innerHTML = 'move <b>◀ ▶</b> / <b>A D</b> &mdash; <b>W</b> jump &mdash; <b>J</b> punch &mdash; <b>K</b> kick &mdash; hold <b>S</b> to block';
+  overlaySub.innerHTML = 'move <b>◀ ▶</b> / <b>A D</b> &mdash; <b>W</b> jump &mdash; <b>J</b> punch &mdash; <b>K</b> kick &mdash; hold <b>S</b> to block &mdash; survive as many levels as you can';
   startBtn.textContent = 'PRESS START';
   nameEntry.classList.add('hidden');
   leaderboardEl.classList.remove('hidden');
+  speedLeaderboardEl.classList.remove('hidden');
   startBtn.classList.remove('hidden');
   renderLeaderboard();
+  renderSpeedLeaderboard();
   overlay.classList.remove('hidden');
   restartBtn.classList.add('hidden');
 }
@@ -304,40 +378,56 @@ function resolveRound(winner) {
   updateHud();
   if (winner.isPlayer) score += 150;
   if (winner.roundsWon >= 2) {
-    endMatch(winner.isPlayer);
+    if (winner.isPlayer) onLevelCleared();
+    else onGameOver();
   } else {
     phase = 'roundend';
     phaseTimer = 1.4;
   }
 }
 
-function endMatch(playerWon) {
+function onLevelCleared() {
+  if (elapsed < bestLevelTime) bestLevelTime = elapsed;
+  score += 400;
+  sfx.win();
+  level += 1;
+  phase = 'levelup';
+  phaseTimer = 1.8;
+  updateHud();
+}
+
+function onGameOver() {
   running = false;
   gameOver = true;
-  matchOver = playerWon ? 'win' : 'lose';
-  if (playerWon) { score += 400; sfx.win(); }
+  matchOver = 'lose';
   updateHud();
   restartBtn.classList.add('hidden');
 
-  if (qualifiesForLeaderboard(score)) {
+  scoreQualifiesFlag = qualifiesForLeaderboard(score);
+  speedQualifiesFlag = qualifiesForSpeedLeaderboard(bestLevelTime);
+
+  if (scoreQualifiesFlag || speedQualifiesFlag) {
     awaitingName = true;
     sfx.highscore();
-    overlayTitle.textContent = 'NEW TOP SCORE!';
-    overlaySub.innerHTML = `SCORE <b>${score}</b>`;
+    overlayTitle.textContent = 'NEW RECORD!';
+    overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; REACHED LEVEL <b>${level}</b>`;
     nameEntry.classList.remove('hidden');
     leaderboardEl.classList.add('hidden');
+    speedLeaderboardEl.classList.add('hidden');
     startBtn.classList.add('hidden');
     overlay.classList.remove('hidden');
     nameInput.value = '';
     setTimeout(() => nameInput.focus(), 50);
   } else {
-    overlayTitle.textContent = playerWon ? 'YOU WIN!' : 'GAME OVER';
-    overlaySub.innerHTML = `SCORE <b>${score}</b><br>press start to try again`;
+    overlayTitle.textContent = 'GAME OVER';
+    overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; REACHED LEVEL <b>${level}</b><br>press start to try again`;
     startBtn.textContent = 'PLAY AGAIN';
     nameEntry.classList.add('hidden');
     leaderboardEl.classList.remove('hidden');
+    speedLeaderboardEl.classList.remove('hidden');
     startBtn.classList.remove('hidden');
     renderLeaderboard();
+    renderSpeedLeaderboard();
     overlay.classList.remove('hidden');
   }
 }
@@ -350,8 +440,10 @@ function updateCpuAI(dt) {
   aiTimer -= dt;
   const dist = distanceBetween(player, cpu);
 
+  const speedMult = 1 + (difficultyLevel() - 1) * 0.05;
+
   if (aiTimer <= 0) {
-    aiTimer = 0.35 + Math.random() * 0.35;
+    aiTimer = (0.35 + Math.random() * 0.35) / (1 + (difficultyLevel() - 1) * 0.08);
     if (dist > 100) {
       aiAction = 'approach';
     } else if (dist < 60) {
@@ -364,10 +456,10 @@ function updateCpuAI(dt) {
 
   cpu.blocking = aiAction === 'block';
   if (aiAction === 'approach') {
-    cpu.x += (player.x < cpu.x ? -1 : 1) * 160 * dt;
+    cpu.x += (player.x < cpu.x ? -1 : 1) * 160 * speedMult * dt;
     cpu.state = 'walk';
   } else if (aiAction === 'retreat') {
-    cpu.x += (player.x < cpu.x ? 1 : -1) * 140 * dt;
+    cpu.x += (player.x < cpu.x ? 1 : -1) * 140 * speedMult * dt;
     cpu.state = 'walk';
   } else if (aiAction === 'punch' && dist <= ATTACKS.punch.reach + 10) {
     tryStartAttack(cpu, 'punch');
@@ -448,8 +540,16 @@ function update(dt) {
     if (phaseTimer <= 0 && !gameOver) startRoundIntro(player.roundsWon + cpu.roundsWon + 1);
     return;
   }
+  if (phase === 'levelup') {
+    phaseTimer -= dt;
+    updateParticles(dt);
+    if (shake > 0) shake -= dt * 30;
+    if (phaseTimer <= 0) startLevel();
+    return;
+  }
 
   // ---- active fight phase ----
+  elapsed += dt;
   player.blocking = blockHeld && player.state !== 'punch' && player.state !== 'kick';
   if (player.state === 'idle' || player.state === 'walk') {
     player.state = 'idle';
@@ -506,9 +606,10 @@ function render() {
   drawFighter(player);
   drawParticles();
 
-  if (phase === 'intro') drawBanner(`ROUND ${(player.roundsWon + cpu.roundsWon + 1)}`, 'FIGHT!', phaseTimer);
+  if (phase === 'intro') drawBanner(`LEVEL ${level} - ROUND ${(player.roundsWon + cpu.roundsWon + 1)}`, 'FIGHT!', phaseTimer);
   if (phase === 'ko') drawBanner('K.O.!', '', phaseTimer);
   if (phase === 'roundend') drawBanner(player.roundsWon > cpu.roundsWon ? 'BLAZE WINS ROUND' : 'TANK WINS ROUND', '', phaseTimer);
+  if (phase === 'levelup') drawBanner(`LEVEL ${level - 1} CLEARED!`, `GET READY FOR LEVEL ${level}`, phaseTimer);
 
   ctx.restore();
 }
@@ -679,6 +780,7 @@ function drawBanner(mainText, subText, timer) {
 }
 
 loadLeaderboard();
+loadSpeedLeaderboard();
 resetFighters();
 showStartScreen();
 updateHud();

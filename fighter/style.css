@@ -197,7 +197,7 @@ canvas#game {
   letter-spacing: 2px;
 }
 
-#leaderboardList {
+#leaderboardList, #speedLeaderboardList {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -207,18 +207,18 @@ canvas#game {
   font-size: 12px;
 }
 
-#leaderboardList li {
+#leaderboardList li, #speedLeaderboardList li {
   display: flex;
   justify-content: space-between;
   gap: 20px;
   color: #ffe0c2;
 }
 
-#leaderboardList li:first-child { color: #ffd23f; }
-#leaderboardList li:nth-child(2) { color: #ff9edb; }
-#leaderboardList li:nth-child(3) { color: #ff9500; }
+#leaderboardList li:first-child, #speedLeaderboardList li:first-child { color: #ffd23f; }
+#leaderboardList li:nth-child(2), #speedLeaderboardList li:nth-child(2) { color: #ff9edb; }
+#leaderboardList li:nth-child(3), #speedLeaderboardList li:nth-child(3) { color: #ff9500; }
 
-#leaderboardList .empty {
+#leaderboardList .empty, #speedLeaderboardList .empty {
   color: #886;
   justify-content: center;
 }
