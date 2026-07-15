@@ -6,7 +6,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const W = canvas.width, H = canvas.height;
 
-const LEVELS = 6; // platform rows, index 0 = bottom, LEVELS-1 = top/goal
+const LEVELS = 8; // platform rows, index 0 = bottom, LEVELS-1 = top/goal
 const TOP_MARGIN = 60, BOTTOM_MARGIN = 60;
 const SPACING = (H - TOP_MARGIN - BOTTOM_MARGIN) / (LEVELS - 1);
 const platformY = Array.from({ length: LEVELS }, (_, i) => H - BOTTOM_MARGIN - i * SPACING);
@@ -18,9 +18,24 @@ const LADDERS = [
   [280],      // 1 -> 2
   [110, 450], // 2 -> 3
   [280],      // 3 -> 4
-  [150, 410], // 4 -> 5 (goal)
+  [150, 410], // 4 -> 5
+  [110, 450], // 5 -> 6
+  [280],      // 6 -> 7 (goal)
 ];
 const LADDER_HALF_WIDTH = 18;
+
+// static spike hazards fixed on certain platforms (in addition to rolling barrels) - jump to clear them
+const SPIKES = [
+  { level: 1, x: 350 },
+  { level: 2, x: 200 },
+  { level: 3, x: 380 },
+  { level: 4, x: 180 },
+  { level: 5, x: 320 },
+  { level: 6, x: 250 },
+];
+
+const PLAYER_SPEED = 150;
+const CPU_SPEED = 150; // kept identical to the player's speed on purpose
 
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('highScore');
@@ -134,6 +149,11 @@ let barrelTimer = 0;
 let elapsed = 0;
 let particles = [];
 let maxLevelReached = 0;
+let phase = 'countdown'; // 'countdown' | 'racing'
+let countdownTime = 0;
+let cpuReactionDelay = 0;
+let cheatFlash = 0;
+const COUNTDOWN_STAGE = 0.8;
 
 function resetGame() {
   player = makeRacer(W / 2 - 40);
@@ -147,6 +167,10 @@ function resetGame() {
   elapsed = 0;
   particles = [];
   maxLevelReached = 0;
+  phase = 'countdown';
+  countdownTime = COUNTDOWN_STAGE * 4;
+  cpuReactionDelay = 0.4;
+  cheatFlash = 0;
   updateHud();
 }
 
@@ -168,6 +192,13 @@ window.addEventListener('keydown', (e) => {
   if (['ArrowDown', 's', 'S'].includes(e.key)) movingDown = true;
   if (e.key === ' ') jumpPressed = true;
   if ((e.key === 'r' || e.key === 'R') && running) restartGame();
+  if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
+    e.preventDefault();
+    if (running && phase === 'racing' && !cpu.reachedTop) {
+      cpu.stunned = Math.max(cpu.stunned, 5);
+      cheatFlash = 1.5;
+    }
+  }
 });
 window.addEventListener('keyup', (e) => {
   if (['ArrowLeft', 'a', 'A'].includes(e.key)) movingLeft = false;
@@ -242,7 +273,7 @@ function onLadder(level, x) {
 }
 
 // ---------- racer update ----------
-function updateRacer(r, dt, input) {
+function updateRacer(r, dt, input, speed) {
   if (r.reachedTop) return;
   if (r.stunned > 0) { r.stunned -= dt; return; }
 
@@ -282,7 +313,6 @@ function updateRacer(r, dt, input) {
     sfx.jump();
   }
 
-  const speed = 150;
   if (input.left) r.x -= speed * dt;
   if (input.right) r.x += speed * dt;
   r.x = Math.max(STAGE_L, Math.min(STAGE_R, r.x));
@@ -319,6 +349,9 @@ function updateCpuInput(dt) {
   const input = { left: false, right: false, up: false, down: false, jump: false };
   if (cpu.reachedTop || cpu.stunned > 0 || cpu.climbing) return input;
 
+  // brief reaction delay after each race start, so the CPU doesn't feel instant/unfair
+  if (cpuReactionDelay > 0) return input;
+
   if (cpu.level < LEVELS - 1) {
     cpuTargetX = nearestLadderX(cpu.level, cpu.x);
   }
@@ -330,10 +363,11 @@ function updateCpuInput(dt) {
     input.up = true;
   }
 
-  // barrel avoidance
+  // hazard avoidance (barrels + static spikes) - imperfect on purpose, kept beatable
   cpuJumpCooldown -= dt;
-  const threat = barrels.find(b => !b.falling && b.level === cpu.level && Math.abs(b.x - cpu.x) < 42 && Math.abs(b.x - cpu.x) > 6);
-  if (threat && cpuJumpCooldown <= 0 && Math.random() < 0.8) {
+  const barrelThreat = barrels.find(b => !b.falling && b.level === cpu.level && Math.abs(b.x - cpu.x) < 42 && Math.abs(b.x - cpu.x) > 6);
+  const spikeThreat = SPIKES.find(s => s.level === cpu.level && Math.abs(s.x - cpu.x) < 30 && Math.abs(s.x - cpu.x) > 6 && (s.x - cpu.x) * dx >= 0);
+  if ((barrelThreat || spikeThreat) && cpuJumpCooldown <= 0 && Math.random() < 0.6) {
     input.jump = true;
     cpuJumpCooldown = 0.6;
   }
@@ -384,7 +418,7 @@ function updateBarrels(dt) {
   barrels = barrels.filter(b => b.level >= 0);
 }
 
-function checkBarrelCollisions() {
+function checkHazardCollisions() {
   for (const b of barrels) {
     if (b.falling) continue;
     for (const r of [player, cpu]) {
@@ -399,9 +433,16 @@ function checkBarrelCollisions() {
       }
     }
   }
+  for (const s of SPIKES) {
+    for (const r of [player, cpu]) {
+      if (r.climbing || r.reachedTop || r.stunned > 0) continue;
+      if (r.level !== s.level) continue;
+      if (Math.abs(r.x - s.x) < 20 && !r.jumping) hitRacer(r, s);
+    }
+  }
 }
 
-function hitRacer(r, barrel) {
+function hitRacer(r, hazard) {
   spawnSpark(r.x, platformY[r.level] - 20);
   if (r === player) {
     lives -= 1;
@@ -413,6 +454,9 @@ function hitRacer(r, barrel) {
     if (lives <= 0) endGame(false);
   } else {
     r.stunned = 1.1;
+    // knock back so a static spike can't trap the CPU in a repeat-hit loop
+    const pushDir = r.x <= hazard.x ? -1 : 1;
+    r.x = Math.max(STAGE_L, Math.min(STAGE_R, r.x + pushDir * 50));
   }
 }
 
@@ -465,12 +509,21 @@ function loop(t) {
 }
 
 function update(dt) {
+  if (cheatFlash > 0) cheatFlash -= dt;
+
+  if (phase === 'countdown') {
+    countdownTime -= dt;
+    if (countdownTime <= 0) phase = 'racing';
+    return;
+  }
+
   elapsed += dt;
-  updateRacer(player, dt, { left: movingLeft, right: movingRight, up: movingUp, down: movingDown, jump: jumpPressed });
+  if (cpuReactionDelay > 0) cpuReactionDelay -= dt;
+  updateRacer(player, dt, { left: movingLeft, right: movingRight, up: movingUp, down: movingDown, jump: jumpPressed }, PLAYER_SPEED);
   jumpPressed = false;
-  updateRacer(cpu, dt, updateCpuInput(dt));
+  updateRacer(cpu, dt, updateCpuInput(dt), CPU_SPEED);
   updateBarrels(dt);
-  checkBarrelCollisions();
+  checkHazardCollisions();
   particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
   particles = particles.filter(p => p.life > 0);
 }
@@ -483,10 +536,56 @@ function render() {
 
   drawPlatforms();
   drawLadders();
+  drawSpikes();
   drawBarrels();
   drawRacer(cpu, { body: '#c23b2a', trim: '#701a10', skin: '#d99a66', accent: '#ffffff' }, 'M');
   drawRacer(player, { body: '#5a3620', trim: '#2a1a10', skin: '#8a5a30', accent: '#c23b2a' }, 'DK');
   drawParticles();
+
+  if (running && phase === 'countdown') drawCountdown();
+  if (cheatFlash > 0) drawCheatFlash();
+}
+
+function drawCountdown() {
+  const stage = Math.max(1, Math.ceil(countdownTime / COUNTDOWN_STAGE));
+  const text = stage >= 4 ? '3' : stage === 3 ? '2' : stage === 2 ? '1' : 'GO!';
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffe93b';
+  ctx.shadowColor = '#ff9500';
+  ctx.shadowBlur = 20;
+  ctx.font = 'bold 64px monospace';
+  ctx.fillText(text, W / 2, H / 2);
+  ctx.restore();
+}
+
+function drawCheatFlash() {
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, cheatFlash);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#5cffb0';
+  ctx.shadowColor = '#5cffb0';
+  ctx.shadowBlur = 14;
+  ctx.font = 'bold 20px monospace';
+  ctx.fillText('MARIO FROZEN!', W / 2, 40);
+  ctx.restore();
+}
+
+function drawSpikes() {
+  for (const s of SPIKES) {
+    const y = platformY[s.level];
+    ctx.save();
+    ctx.fillStyle = '#ff3b3b';
+    ctx.shadowColor = '#ff3b3b';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(s.x - 10, y);
+    ctx.lineTo(s.x, y - 16);
+    ctx.lineTo(s.x + 10, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 function drawPlatforms() {
