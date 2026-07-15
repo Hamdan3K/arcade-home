@@ -176,14 +176,9 @@ function onCellClick(e) {
 }
 
 function attemptStart() {
-  if (playerCups.size !== 3) {
-    setupHintEl.classList.add('warn');
-    setupHintEl.textContent = `place all 3 cups on your grid first! (${playerCups.size}/3)`;
-    setTimeout(() => {
-      setupHintEl.classList.remove('warn');
-      updateHud();
-    }, 1400);
-    return;
+  while (playerCups.size < 3) {
+    const i = Math.floor(Math.random() * SIZE * SIZE);
+    if (!playerCups.has(i)) { playerCups.add(i); renderCell(i, 'player'); }
   }
   placeCpuCups();
   overlay.classList.add('hidden');
