@@ -9,6 +9,7 @@ const H = canvas.height;
 const scoreEl = document.getElementById('score');
 const highScoreEl = document.getElementById('highScore');
 const waveEl = document.getElementById('wave');
+const powerEl = document.getElementById('power');
 const livesEl = document.getElementById('lives');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlayTitle');
@@ -35,7 +36,13 @@ const SHIP_SPRITE = [
   '22.....22',
   '2.......2',
 ];
-const SHIP_PALETTE = { '1': '#ff5577', '2': '#ff2255' };
+// palette/glow tier per power level (1-3) - the ship visibly upgrades as you collect orbs
+const SHIP_PALETTES = [
+  { '1': '#ff5577', '2': '#ff2255' },
+  { '1': '#ffcf5c', '2': '#ff8a00' },
+  { '1': '#8affef', '2': '#39e0ff' },
+];
+const SHIP_GLOWS = ['#ff3366', '#ffb400', '#39e0ff'];
 
 const UFO_SPRITE = [
   '..1...1..',
@@ -99,6 +106,16 @@ const stars = Array.from({ length: STAR_COUNT }, () => ({
   twinkle: Math.random() * Math.PI * 2,
 }));
 
+// ---------- drifting nebula backdrop (visual refresh) ----------
+const NEBULA_COLORS = ['rgba(160, 70, 255, 0.07)', 'rgba(0, 160, 255, 0.06)', 'rgba(255, 60, 170, 0.05)'];
+const nebulae = Array.from({ length: 4 }, (_, i) => ({
+  x: Math.random() * W,
+  y: Math.random() * H,
+  r: 140 + Math.random() * 120,
+  color: NEBULA_COLORS[i % NEBULA_COLORS.length],
+  vy: 4 + Math.random() * 6,
+}));
+
 // ---------- audio (simple retro beeps, no external assets) ----------
 let audioCtx = null;
 function beep(freq, duration, type = 'square', vol = 0.05) {
@@ -123,6 +140,7 @@ const sfx = {
   hit: () => beep(90, 0.3, 'sawtooth', 0.08),
   wave: () => beep(660, 0.4, 'triangle', 0.05),
   highscore: () => beep(1046, 0.5, 'triangle', 0.06),
+  powerup: () => { beep(660, 0.08, 'triangle', 0.05); setTimeout(() => beep(990, 0.14, 'triangle', 0.06), 70); },
 };
 
 // ---------- leaderboard (persisted top 3) ----------
@@ -161,6 +179,26 @@ function currentHighScore() {
   return leaderboard.length ? leaderboard[0].score : 0;
 }
 
+// ---------- wave checkpoint (persisted) ----------
+const CHECKPOINT_KEY = 'neonRaidersCheckpoint';
+let checkpointWave = 1;
+
+function loadCheckpoint() {
+  try {
+    const raw = localStorage.getItem(CHECKPOINT_KEY);
+    checkpointWave = raw ? Math.max(1, parseInt(raw, 10) || 1) : 1;
+  } catch (e) {
+    checkpointWave = 1;
+  }
+}
+
+function saveCheckpoint(w) {
+  checkpointWave = w;
+  try {
+    localStorage.setItem(CHECKPOINT_KEY, String(w));
+  } catch (e) { /* storage unavailable, keep in-memory only */ }
+}
+
 function renderLeaderboard() {
   leaderboardListEl.innerHTML = '';
   if (!leaderboard.length) {
@@ -195,6 +233,7 @@ const player = {
   cooldown: 0,
   fireRate: 0.22,
   invuln: 0,
+  power: 1, // 1-3, upgraded by collecting orbs dropped by the elite alien
 };
 
 let movingLeft = false;
@@ -208,9 +247,10 @@ let bullets = [];       // player lasers, moving up
 let enemyBullets = [];  // alien shots, moving down
 let aliens = [];
 let particles = [];
+let pickups = [];       // power-up orbs dropped by the elite alien
 
 let score = 0;
-let lives = 3;
+let lives = 4;
 let wave = 1;
 let running = false;
 let gameOver = false;
@@ -223,14 +263,16 @@ function resetGameState() {
   bullets = [];
   enemyBullets = [];
   particles = [];
+  pickups = [];
   score = 0;
-  lives = 3;
-  wave = 1;
+  lives = 4;
+  wave = checkpointWave;
   gameOver = false;
   awaitingName = false;
   player.x = W / 2;
   player.y = H - 70;
-  player.invuln = 1.5;
+  player.invuln = 2;
+  player.power = 1;
   spawnWave(wave);
   updateHud();
 }
@@ -238,7 +280,7 @@ function resetGameState() {
 function spawnWave(n) {
   aliens = [];
   const cols = 8;
-  const rows = 3 + Math.min(2, Math.floor(n / 3));
+  const rows = 3 + Math.min(2, Math.floor(n / 4));
   const spacingX = 70;
   const spacingY = 60;
   const startX = (W - (cols - 1) * spacingX) / 2;
@@ -255,9 +297,13 @@ function spawnWave(n) {
         palette: isUfo ? UFO_PALETTE : HUMANOID_PALETTE,
         glow: isUfo ? '#39ff6a' : '#ff4de3',
         bob: Math.random() * Math.PI * 2,
+        elite: false,
       });
     }
   }
+  // exactly one elite alien per wave - killing it drops a power-up orb
+  aliens[Math.floor(Math.random() * aliens.length)].elite = true;
+
   alienDir = 1;
   alienMoveTimer = 0;
   alienFireTimer = 0;
@@ -267,6 +313,7 @@ function updateHud() {
   scoreEl.textContent = score;
   highScoreEl.textContent = Math.max(currentHighScore(), score);
   waveEl.textContent = wave;
+  powerEl.textContent = '●'.repeat(player.power) + '○'.repeat(3 - player.power);
   livesEl.textContent = '▲'.repeat(Math.max(0, lives));
 }
 
@@ -322,7 +369,7 @@ function submitName() {
   renderLeaderboard();
   updateHud();
   overlayTitle.textContent = 'GAME OVER';
-  overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; WAVE <b>${wave}</b><br>press start to try again`;
+  overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; WAVE <b>${wave}</b><br><span class="resume-note">next attempt resumes at WAVE ${wave}</span>`;
   startBtn.textContent = 'PLAY AGAIN';
 }
 
@@ -334,7 +381,10 @@ function startGame() {
 
 function showStartScreen() {
   overlayTitle.textContent = 'NEON RAIDERS';
-  overlaySub.innerHTML = 'move <b>◀ ▶ ▲ ▼</b> / <b>WASD</b> to fly &mdash; <b>SPACE</b> to fire';
+  overlaySub.innerHTML = 'move <b>◀ ▶ ▲ ▼</b> / <b>WASD</b> to fly &mdash; <b>SPACE</b> to fire &mdash; grab the <b>violet orb</b> from the elite alien to power up';
+  overlaySub.innerHTML += checkpointWave > 1
+    ? `<br><span class="resume-note">resuming at WAVE ${checkpointWave}</span>`
+    : '';
   startBtn.textContent = 'PRESS START';
   nameEntry.classList.add('hidden');
   leaderboardEl.classList.remove('hidden');
@@ -362,6 +412,10 @@ function updateStars(dt) {
     if (s.y > H) { s.y = 0; s.x = Math.random() * W; }
     s.twinkle += dt * 3;
   }
+  for (const n of nebulae) {
+    n.y += n.vy * dt;
+    if (n.y - n.r > H) n.y = -n.r;
+  }
 }
 
 function update(dt) {
@@ -375,11 +429,14 @@ function update(dt) {
 
   if (player.invuln > 0) player.invuln -= dt;
 
-  // fire on space bar / touch fire button
+  // fire on space bar / touch fire button - spread widens as power increases
   player.cooldown -= dt;
   if (firing && player.cooldown <= 0) {
-    bullets.push({ x: player.x, y: player.y - player.height / 2, vy: -560 });
-    player.cooldown = player.fireRate;
+    const offsets = player.power === 1 ? [0] : player.power === 2 ? [-8, 8] : [-14, 0, 14];
+    for (const off of offsets) {
+      bullets.push({ x: player.x + off, y: player.y - player.height / 2, vy: -560 });
+    }
+    player.cooldown = player.fireRate * (1 - 0.12 * (player.power - 1));
     sfx.shoot();
   }
 
@@ -390,10 +447,13 @@ function update(dt) {
   enemyBullets.forEach(b => b.y += b.vy * dt);
   enemyBullets = enemyBullets.filter(b => b.y < H + 20);
 
-  // alien formation movement (classic side-step)
+  // power-up orbs drift down toward the player
+  pickups.forEach(p => { p.y += p.vy * dt; p.phase += dt * 6; });
+
+  // alien formation movement (classic side-step) - slower and gentler than before
   const aliveAliens = aliens.filter(a => a.alive);
   alienMoveTimer += dt;
-  const moveInterval = Math.max(0.15, 0.9 - wave * 0.05 - (1 - aliveAliens.length / aliens.length) * 0.4);
+  const moveInterval = Math.max(0.25, 1.15 - wave * 0.03 - (1 - aliveAliens.length / aliens.length) * 0.3);
   if (alienMoveTimer > moveInterval) {
     alienMoveTimer = 0;
     let hitEdge = false;
@@ -408,18 +468,19 @@ function update(dt) {
   }
   for (const a of aliveAliens) a.bob += dt * 4;
 
-  // alien firing
+  // alien firing - slower cadence and slower bullets than before
   alienFireTimer -= dt;
   if (alienFireTimer <= 0 && aliveAliens.length) {
     const shooter = aliveAliens[Math.floor(Math.random() * aliveAliens.length)];
-    enemyBullets.push({ x: shooter.x, y: shooter.y + 20, vy: 220 + wave * 10 });
-    alienFireTimer = Math.max(0.35, 1.1 - wave * 0.06);
+    enemyBullets.push({ x: shooter.x, y: shooter.y + 20, vy: 170 + wave * 6 });
+    alienFireTimer = Math.max(0.6, 1.6 - wave * 0.04);
     sfx.alienShoot();
   }
 
-  // check aliens reaching player line -> game over
+  // check aliens reaching the danger line (fixed near the bottom, not tied to the player's own position)
+  const dangerLine = player.maxY - 10;
   for (const a of aliveAliens) {
-    if (a.y > player.y - 20) {
+    if (a.y > dangerLine) {
       endGame();
       return;
     }
@@ -437,6 +498,9 @@ function update(dt) {
         score += a.type === 'ufo' ? 100 : 150;
         spawnExplosion(a.x, a.y, a.glow);
         sfx.explode();
+        if (a.elite) {
+          pickups.push({ x: a.x, y: a.y, vy: 90, phase: Math.random() * Math.PI * 2 });
+        }
         updateHud();
       }
     }
@@ -453,6 +517,18 @@ function update(dt) {
     }
   }
   enemyBullets = enemyBullets.filter(b => !b.hit);
+
+  // collisions: player vs power-up orbs
+  for (const p of pickups) {
+    if (Math.abs(p.x - player.x) < player.width / 2 + 8 && Math.abs(p.y - player.y) < player.height / 2 + 8) {
+      p.collected = true;
+      if (player.power < 3) player.power += 1;
+      sfx.powerup();
+      spawnExplosion(p.x, p.y, '#c86bff');
+      updateHud();
+    }
+  }
+  pickups = pickups.filter(p => !p.collected && p.y < H + 20);
 
   // particles
   particles.forEach(p => { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; });
@@ -483,7 +559,7 @@ function spawnExplosion(x, y, color) {
 
 function hitPlayer() {
   lives -= 1;
-  player.invuln = 2;
+  player.invuln = 2.5;
   spawnExplosion(player.x, player.y, '#ff5577');
   sfx.hit();
   updateHud();
@@ -493,6 +569,7 @@ function hitPlayer() {
 function endGame() {
   running = false;
   gameOver = true;
+  saveCheckpoint(wave);
   updateHud();
 
   if (qualifiesForLeaderboard(score)) {
@@ -508,7 +585,7 @@ function endGame() {
     setTimeout(() => nameInput.focus(), 50);
   } else {
     overlayTitle.textContent = 'GAME OVER';
-    overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; WAVE <b>${wave}</b><br>press start to try again`;
+    overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; WAVE <b>${wave}</b><br><span class="resume-note">next attempt resumes at WAVE ${wave}</span>`;
     startBtn.textContent = 'PLAY AGAIN';
     nameEntry.classList.add('hidden');
     leaderboardEl.classList.remove('hidden');
@@ -524,10 +601,19 @@ function render() {
 
   // background gradient
   const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#050518');
-  grad.addColorStop(1, '#01010a');
+  grad.addColorStop(0, '#0a0522');
+  grad.addColorStop(1, '#020210');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
+
+  // drifting nebula clouds
+  for (const n of nebulae) {
+    const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+    g.addColorStop(0, n.color);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
+  }
 
   // stars
   for (const s of stars) {
@@ -551,7 +637,33 @@ function render() {
     const bobOffset = Math.sin(a.bob) * 3;
     const w = spriteWidth(a.sprite, PIXEL);
     const h = spriteHeight(a.sprite, PIXEL);
-    drawSprite(a.sprite, a.palette, a.x - w / 2, a.y - h / 2 + bobOffset, PIXEL, a.glow);
+    if (a.elite) {
+      const pulse = 0.6 + 0.4 * Math.sin(a.bob * 1.5);
+      ctx.save();
+      const g = ctx.createRadialGradient(a.x, a.y + bobOffset, 2, a.x, a.y + bobOffset, 26);
+      g.addColorStop(0, `rgba(200, 107, 255, ${0.5 * pulse})`);
+      g.addColorStop(1, 'rgba(200, 107, 255, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(a.x - 26, a.y + bobOffset - 26, 52, 52);
+      ctx.restore();
+      drawSprite(a.sprite, a.palette, a.x - w / 2, a.y - h / 2 + bobOffset, PIXEL, '#c86bff');
+    } else {
+      drawSprite(a.sprite, a.palette, a.x - w / 2, a.y - h / 2 + bobOffset, PIXEL, a.glow);
+    }
+  }
+
+  // power-up orbs
+  for (const p of pickups) {
+    const pulse = 0.7 + 0.3 * Math.sin(p.phase);
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = '#c86bff';
+    ctx.shadowColor = '#c86bff';
+    ctx.shadowBlur = 14 * pulse;
+    const s = 13;
+    ctx.fillRect(-s / 2, -s / 2, s, s);
+    ctx.restore();
   }
 
   // particles
@@ -569,13 +681,27 @@ function render() {
   if (running || gameOver) {
     const blink = player.invuln > 0 ? Math.floor(player.invuln * 10) % 2 === 0 : true;
     if (blink) {
+      const tier = player.power - 1;
+      drawThruster(player.x, player.y + player.height / 2, player.power);
       drawSprite(
-        SHIP_SPRITE, SHIP_PALETTE,
+        SHIP_SPRITE, SHIP_PALETTES[tier],
         player.x - player.width / 2, player.y - player.height / 2,
-        PIXEL, '#ff3366'
+        PIXEL, SHIP_GLOWS[tier]
       );
     }
   }
+}
+
+function drawThruster(x, y, power) {
+  const flicker = 0.6 + 0.4 * Math.sin(performance.now() / 40);
+  const len = 8 + power * 6;
+  ctx.save();
+  ctx.fillStyle = power >= 3 ? '#8affef' : power === 2 ? '#ffcf5c' : '#ff8a5c';
+  ctx.shadowColor = ctx.fillStyle;
+  ctx.shadowBlur = 10 * flicker;
+  ctx.fillRect(x - 6, y, 5, len * flicker);
+  ctx.fillRect(x + 1, y, 5, len * flicker);
+  ctx.restore();
 }
 
 function drawGlowBeam(x, y, len, color) {
@@ -592,6 +718,7 @@ function drawGlowBeam(x, y, len, color) {
 }
 
 loadLeaderboard();
+loadCheckpoint();
 showStartScreen();
 updateHud();
 requestAnimationFrame(loop);

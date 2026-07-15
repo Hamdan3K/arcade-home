@@ -42,10 +42,12 @@ canvas#game {
   left: 0;
   right: 0;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
+  gap: 8px;
   padding: 0 20px;
   z-index: 5;
-  font-size: 11px;
+  font-size: 10px;
   pointer-events: none;
 }
 
@@ -72,6 +74,16 @@ canvas#game {
 #lives {
   color: #ff4d8d;
   text-shadow: 0 0 8px #ff2d78;
+}
+
+#power {
+  color: #c86bff !important;
+  text-shadow: 0 0 8px #c86bff;
+}
+
+.resume-note {
+  color: #c86bff;
+  text-shadow: 0 0 6px #c86bff;
 }
 
 .screen {
