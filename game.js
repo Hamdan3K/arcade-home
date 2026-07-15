@@ -1,5 +1,5 @@
 // NEON RAIDERS - retro pixel-art space shooter
-// Ship auto-fires; player only steers left/right to aim.
+// Player steers the ship in all directions and fires with the space bar.
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -7,6 +7,7 @@ const W = canvas.width;
 const H = canvas.height;
 
 const scoreEl = document.getElementById('score');
+const highScoreEl = document.getElementById('highScore');
 const waveEl = document.getElementById('wave');
 const livesEl = document.getElementById('lives');
 const overlay = document.getElementById('overlay');
@@ -15,6 +16,14 @@ const overlaySub = document.getElementById('overlaySub');
 const startBtn = document.getElementById('startBtn');
 const leftBtn = document.getElementById('leftBtn');
 const rightBtn = document.getElementById('rightBtn');
+const upBtn = document.getElementById('upBtn');
+const downBtn = document.getElementById('downBtn');
+const fireBtn = document.getElementById('fireBtn');
+const nameEntry = document.getElementById('nameEntry');
+const nameInput = document.getElementById('nameInput');
+const submitNameBtn = document.getElementById('submitNameBtn');
+const leaderboardEl = document.getElementById('leaderboard');
+const leaderboardListEl = document.getElementById('leaderboardList');
 
 // ---------- pixel sprite data (0 = empty, 1/2 = palette index) ----------
 const SHIP_SPRITE = [
@@ -113,23 +122,86 @@ const sfx = {
   explode: () => beep(120, 0.25, 'square', 0.06),
   hit: () => beep(90, 0.3, 'sawtooth', 0.08),
   wave: () => beep(660, 0.4, 'triangle', 0.05),
+  highscore: () => beep(1046, 0.5, 'triangle', 0.06),
 };
+
+// ---------- leaderboard (persisted top 3) ----------
+const LEADERBOARD_KEY = 'neonRaidersLeaderboard';
+let leaderboard = [];
+
+function loadLeaderboard() {
+  try {
+    const raw = localStorage.getItem(LEADERBOARD_KEY);
+    leaderboard = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    leaderboard = [];
+  }
+}
+
+function saveLeaderboard() {
+  try {
+    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+  } catch (e) { /* storage unavailable, keep in-memory only */ }
+}
+
+function qualifiesForLeaderboard(s) {
+  if (s <= 0) return false;
+  if (leaderboard.length < 3) return true;
+  return s > leaderboard[2].score;
+}
+
+function addToLeaderboard(name, s) {
+  leaderboard.push({ name: name.slice(0, 10).toUpperCase() || 'PLAYER', score: s });
+  leaderboard.sort((a, b) => b.score - a.score);
+  leaderboard = leaderboard.slice(0, 3);
+  saveLeaderboard();
+}
+
+function currentHighScore() {
+  return leaderboard.length ? leaderboard[0].score : 0;
+}
+
+function renderLeaderboard() {
+  leaderboardListEl.innerHTML = '';
+  if (!leaderboard.length) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = 'NO SCORES YET';
+    leaderboardListEl.appendChild(li);
+    return;
+  }
+  leaderboard.forEach((entry, i) => {
+    const li = document.createElement('li');
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = `${i + 1}. ${entry.name}`;
+    const scoreSpan = document.createElement('span');
+    scoreSpan.textContent = entry.score;
+    li.appendChild(nameSpan);
+    li.appendChild(scoreSpan);
+    leaderboardListEl.appendChild(li);
+  });
+}
 
 // ---------- player ----------
 const PIXEL = 5;
 const player = {
   x: W / 2,
   y: H - 70,
+  minY: H * 0.5,
+  maxY: H - 40,
   speed: 340,
   width: spriteWidth(SHIP_SPRITE, PIXEL),
   height: spriteHeight(SHIP_SPRITE, PIXEL),
   cooldown: 0,
-  fireRate: 0.28,
+  fireRate: 0.22,
   invuln: 0,
 };
 
 let movingLeft = false;
 let movingRight = false;
+let movingForward = false;  // up, toward the aliens
+let movingBackward = false; // down, retreating
+let firing = false;
 
 // ---------- entities ----------
 let bullets = [];       // player lasers, moving up
@@ -142,8 +214,8 @@ let lives = 3;
 let wave = 1;
 let running = false;
 let gameOver = false;
+let awaitingName = false;
 let alienDir = 1;
-let alienStepDown = 0;
 let alienMoveTimer = 0;
 let alienFireTimer = 0;
 
@@ -155,7 +227,9 @@ function resetGameState() {
   lives = 3;
   wave = 1;
   gameOver = false;
+  awaitingName = false;
   player.x = W / 2;
+  player.y = H - 70;
   player.invuln = 1.5;
   spawnWave(wave);
   updateHud();
@@ -185,26 +259,37 @@ function spawnWave(n) {
     }
   }
   alienDir = 1;
-  alienStepDown = 0;
   alienMoveTimer = 0;
   alienFireTimer = 0;
 }
 
 function updateHud() {
   scoreEl.textContent = score;
+  highScoreEl.textContent = Math.max(currentHighScore(), score);
   waveEl.textContent = wave;
   livesEl.textContent = '▲'.repeat(Math.max(0, lives));
 }
 
 // ---------- input ----------
+const MOVE_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' ', 'a', 'A', 'd', 'D', 'w', 'W', 's', 'S'];
+
 window.addEventListener('keydown', (e) => {
+  if (MOVE_KEYS.includes(e.key)) e.preventDefault();
   if (['ArrowLeft', 'a', 'A'].includes(e.key)) movingLeft = true;
   if (['ArrowRight', 'd', 'D'].includes(e.key)) movingRight = true;
-  if (e.key === ' ' && !running) startGame();
+  if (['ArrowUp', 'w', 'W'].includes(e.key)) movingForward = true;
+  if (['ArrowDown', 's', 'S'].includes(e.key)) movingBackward = true;
+  if (e.key === ' ') {
+    if (running) firing = true;
+    else if (!awaitingName) startGame();
+  }
 });
 window.addEventListener('keyup', (e) => {
   if (['ArrowLeft', 'a', 'A'].includes(e.key)) movingLeft = false;
   if (['ArrowRight', 'd', 'D'].includes(e.key)) movingRight = false;
+  if (['ArrowUp', 'w', 'W'].includes(e.key)) movingForward = false;
+  if (['ArrowDown', 's', 'S'].includes(e.key)) movingBackward = false;
+  if (e.key === ' ') firing = false;
 });
 
 function bindHold(btn, onDown, onUp) {
@@ -216,8 +301,30 @@ function bindHold(btn, onDown, onUp) {
 }
 bindHold(leftBtn, () => movingLeft = true, () => movingLeft = false);
 bindHold(rightBtn, () => movingRight = true, () => movingRight = false);
+bindHold(upBtn, () => movingForward = true, () => movingForward = false);
+bindHold(downBtn, () => movingBackward = true, () => movingBackward = false);
+bindHold(fireBtn, () => firing = true, () => firing = false);
 
 startBtn.addEventListener('click', startGame);
+
+submitNameBtn.addEventListener('click', submitName);
+nameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') submitName();
+});
+
+function submitName() {
+  const name = nameInput.value.trim() || 'PLAYER';
+  addToLeaderboard(name, score);
+  awaitingName = false;
+  nameEntry.classList.add('hidden');
+  leaderboardEl.classList.remove('hidden');
+  startBtn.classList.remove('hidden');
+  renderLeaderboard();
+  updateHud();
+  overlayTitle.textContent = 'GAME OVER';
+  overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; WAVE <b>${wave}</b><br>press start to try again`;
+  startBtn.textContent = 'PLAY AGAIN';
+}
 
 function startGame() {
   overlay.classList.add('hidden');
@@ -225,11 +332,15 @@ function startGame() {
   running = true;
 }
 
-function showOverlay(title, sub) {
-  overlayTitle.textContent = title;
-  overlaySub.innerHTML = sub;
+function showStartScreen() {
+  overlayTitle.textContent = 'NEON RAIDERS';
+  overlaySub.innerHTML = 'move <b>◀ ▶ ▲ ▼</b> / <b>WASD</b> to fly &mdash; <b>SPACE</b> to fire';
+  startBtn.textContent = 'PRESS START';
+  nameEntry.classList.add('hidden');
+  leaderboardEl.classList.remove('hidden');
+  startBtn.classList.remove('hidden');
+  renderLeaderboard();
   overlay.classList.remove('hidden');
-  running = false;
 }
 
 // ---------- update ----------
@@ -257,14 +368,17 @@ function update(dt) {
   // player movement
   if (movingLeft) player.x -= player.speed * dt;
   if (movingRight) player.x += player.speed * dt;
+  if (movingForward) player.y -= player.speed * dt;
+  if (movingBackward) player.y += player.speed * dt;
   player.x = Math.max(player.width / 2, Math.min(W - player.width / 2, player.x));
+  player.y = Math.max(player.minY, Math.min(player.maxY, player.y));
 
   if (player.invuln > 0) player.invuln -= dt;
 
-  // auto fire
+  // fire on space bar / touch fire button
   player.cooldown -= dt;
-  if (player.cooldown <= 0) {
-    bullets.push({ x: player.x, y: player.y - player.height / 2, vy: -520 });
+  if (firing && player.cooldown <= 0) {
+    bullets.push({ x: player.x, y: player.y - player.height / 2, vy: -560 });
     player.cooldown = player.fireRate;
     sfx.shoot();
   }
@@ -379,10 +493,29 @@ function hitPlayer() {
 function endGame() {
   running = false;
   gameOver = true;
-  showOverlay(
-    'GAME OVER',
-    `SCORE <b>${score}</b> &mdash; WAVE <b>${wave}</b><br>press start to try again`
-  );
+  updateHud();
+
+  if (qualifiesForLeaderboard(score)) {
+    awaitingName = true;
+    sfx.highscore();
+    overlayTitle.textContent = 'NEW TOP SCORE!';
+    overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; WAVE <b>${wave}</b>`;
+    nameEntry.classList.remove('hidden');
+    leaderboardEl.classList.add('hidden');
+    startBtn.classList.add('hidden');
+    overlay.classList.remove('hidden');
+    nameInput.value = '';
+    setTimeout(() => nameInput.focus(), 50);
+  } else {
+    overlayTitle.textContent = 'GAME OVER';
+    overlaySub.innerHTML = `SCORE <b>${score}</b> &mdash; WAVE <b>${wave}</b><br>press start to try again`;
+    startBtn.textContent = 'PLAY AGAIN';
+    nameEntry.classList.add('hidden');
+    leaderboardEl.classList.remove('hidden');
+    startBtn.classList.remove('hidden');
+    renderLeaderboard();
+    overlay.classList.remove('hidden');
+  }
 }
 
 // ---------- render ----------
@@ -458,4 +591,7 @@ function drawGlowBeam(x, y, len, color) {
   ctx.restore();
 }
 
+loadLeaderboard();
+showStartScreen();
+updateHud();
 requestAnimationFrame(loop);
