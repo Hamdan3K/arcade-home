@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #030312;
+  color: #b6faff;
+  font-family: 'Press Start 2P', monospace;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+#game-wrap {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+canvas#game {
+  background: #030312;
+  max-width: 100vw;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
+  image-rendering: pixelated;
+  border-top: 2px solid #123;
+  border-bottom: 2px solid #123;
+  box-shadow: 0 0 40px rgba(0, 200, 255, 0.15) inset;
+}
+
+#hud {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 5;
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.hud-item {
+  color: #7ff9ff;
+  text-shadow: 0 0 8px #00d9ff, 0 0 2px #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.hud-item span {
+  color: #fff;
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+#lives {
+  color: #ff4d8d;
+  text-shadow: 0 0 8px #ff2d78;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: rgba(2, 2, 12, 0.86);
+  text-align: center;
+  z-index: 10;
+  padding: 20px;
+}
+
+.screen.hidden { display: none; }
+
+.title {
+  font-size: clamp(20px, 5vw, 40px);
+  color: #39ff88;
+  text-shadow: 0 0 10px #22ff77, 0 0 24px #0f0, 2px 2px 0 #ff2d78;
+  letter-spacing: 4px;
+  margin: 0;
+}
+
+.sub {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #8fe9ff;
+  max-width: 480px;
+}
+
+.hint {
+  font-size: 9px;
+  color: #557;
+}
+
+.arcade-btn {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  padding: 16px 28px;
+  background: #0a0a20;
+  color: #ffe93b;
+  border: 3px solid #ffe93b;
+  box-shadow: 0 0 16px rgba(255, 233, 59, 0.5);
+  cursor: pointer;
+  animation: pulse 1.4s infinite ease-in-out;
+}
+
+.arcade-btn:hover { background: #1a1a3a; }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 233, 59, 0.4); }
+  50% { box-shadow: 0 0 26px rgba(255, 233, 59, 0.9); }
+}
+
+#gameover-score, #gameover-wave {
+  color: #fff;
+}
+
+#touch-controls {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  display: none;
+  justify-content: space-between;
+  padding: 0 30px;
+  z-index: 6;
+}
+
+.touch-btn {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: rgba(0, 217, 255, 0.12);
+  border: 2px solid #00d9ff;
+  color: #00d9ff;
+  font-size: 26px;
+  box-shadow: 0 0 14px rgba(0, 217, 255, 0.5);
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  #touch-controls { display: flex; }
+}
+
+@media (max-width: 600px) {
+  .sub { font-size: 9px; }
+  .hud-item { font-size: 9px; }
+  .hud-item span { font-size: 12px; }
+}
