@@ -9,6 +9,7 @@ const STAGE_MARGIN = 50;
 const MIN_SEPARATION = 76;
 
 const scoreEl = document.getElementById('score');
+const levelEl = document.getElementById('level');
 const highScoreEl = document.getElementById('highScore');
 const timerEl = document.getElementById('timer');
 const p1HealthEl = document.getElementById('p1Health');
@@ -130,7 +131,7 @@ let particles = [];
 let shake = 0;
 
 const ATTACKS = {
-  punch: { startup: 0.08, active: 0.09, recovery: 0.16, reach: 68, damage: 6, knockback: 30 },
+  punch: { startup: 0.08, active: 0.09, recovery: 0.16, reach: 84, damage: 6, knockback: 30 },
   kick: { startup: 0.14, active: 0.10, recovery: 0.24, reach: 88, damage: 10, knockback: 55 },
 };
 

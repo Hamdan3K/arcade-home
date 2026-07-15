@@ -307,7 +307,8 @@ function updateRacer(r, dt, input, speed) {
     if (r.jumpTime >= 0.45) { r.jumping = false; r.jumpTime = 0; }
   }
 
-  if (input.jump && !r.jumping) {
+  const wantsJump = input.jump || (input.up && !onLadder(r.level, r.x));
+  if (wantsJump && !r.jumping) {
     r.jumping = true;
     r.jumpTime = 0;
     sfx.jump();
